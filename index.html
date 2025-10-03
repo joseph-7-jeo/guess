@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Guess U R Name</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;}
+    html,body{height:100%;margin:0;background:#ffffff;color:#000000;overflow-x:hidden;overflow-y:auto;}
+    .wrap{
+      height:100%;display:flex;align-items:center;justify-content:center;padding:24px;
+      position:relative;
+    }
+    .card{
+      text-align:center;max-width:520px;width:100%;position:relative;
+    }
+    h1{font-size:2.2rem;margin:0 0 18px}
+    p.lead{margin:0 0 20px;font-size:1.05rem;opacity:.9}
+    .input-row{display:flex;gap:10px;justify-content:center;align-items:center;position:relative;}
+    .input-row .sidebar-label{
+      font-size:1rem;margin-right:8px;color:#333;font-weight:600;
+    }
+    input[type="text"]{
+      font-size:1rem;padding:12px 14px;border:2px solid #000;border-radius:8px;outline:none;width:260px;
+    }
+    input[type="text"]:focus{box-shadow:0 0 0 4px rgba(0,0,0,0.06)}
+    button{
+      font-size:1rem;padding:11px 16px;border-radius:8px;border:2px solid #000;background:transparent;cursor:pointer;
+    }
+    button:active{transform:translateY(1px)}
+
+    .processing{display:none;margin-top:18px;align-items:center;justify-content:center;gap:10px;}
+    .dots span{display:inline-block;width:8px;height:8px;border-radius:50%;background:#000;margin:0 3px;opacity:.2;animation:blink 1s infinite}
+    .dots span:nth-child(1){animation-delay:0s}
+    .dots span:nth-child(2){animation-delay:.15s}
+    .dots span:nth-child(3){animation-delay:.3s}
+    @keyframes blink{0%{opacity:.2;transform:translateY(0)}50%{opacity:1;transform:translateY(-6px)}100%{opacity:.2;transform:translateY(0)}}
+
+    .result{display:none;margin-top:20px;font-size:1.25rem;position:relative;}
+    .name{font-weight:700;margin-left:8px;display:inline-block;}
+
+    .jokes{margin-top:12px;font-size:0.95rem;color:#555;min-height:20px;opacity:0;transition:opacity .5s ease;}
+    .title{margin-top:10px;font-size:1rem;font-style:italic;color:#007acc;opacity:0;transition:opacity .6s ease;}
+    .fortune{margin-top:10px;font-size:0.95rem;color:#880;opacity:0;transition:opacity .6s ease;}
+
+    .rating{margin-top:12px;width:80%;max-width:300px;height:16px;background:#eee;border-radius:8px;overflow:hidden;display:none;margin-left:auto;margin-right:auto;}
+    .rating-fill{height:100%;background:linear-gradient(90deg,#ff4d4d,#ffcc00,#33cc33);width:0;transition:width 1s ease;}
+
+    @media (max-width:420px){h1{font-size:1.6rem}input[type="text"]{width:160px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card" role="main">
+      <h1>Guess U R Name</h1>
+      <p class="lead">What's your name?</p>
+      <div class="input-row">
+        <span class="sidebar-label">Enter U R Name:</span>
+        <label for="nameInput" class="sr-only" style="position:absolute;left:-9999px;">Your name</label>
+        <input id="nameInput" type="text" placeholder="Type your name..." autocomplete="name" />
+        <button id="goBtn" aria-controls="processing">Guess</button>
+      </div>
+
+      <div id="processing" class="processing" aria-live="polite">
+        <div class="dots" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="status">Thinking...</div>
+      </div>
+      <div id="result" class="result" aria-live="polite">
+        This is your name: <span id="theName" class="name"></span>
+        <div id="title" class="title"></div>
+        <div class="rating"><div class="rating-fill" id="ratingFill"></div></div>
+        <div id="fortune" class="fortune"></div>
+      </div>
+      <div id="joke" class="jokes"></div>
+    </div>
+  </div>
+
+  <script>
+    const input=document.getElementById('nameInput');
+    const btn=document.getElementById('goBtn');
+    const processing=document.getElementById('processing');
+    const result=document.getElementById('result');
+    const theName=document.getElementById('theName');
+    const jokeDiv=document.getElementById('joke');
+    const titleDiv=document.getElementById('title');
+    const fortuneDiv=document.getElementById('fortune');
+    const rating=document.querySelector('.rating');
+    const ratingFill=document.getElementById('ratingFill');
+
+    const jokes=[
+      'Wow, such a cool name!',
+      'Did anyone ever tell you your name is legendary?',
+      'I think aliens would approve this name!',
+      'Your name should be in the Guinness records!',
+      'Hmm… I sense greatness in this name!'
+    ];
+
+    const titles=[
+      'The Lord of Awesomeness','Master of Memes','Chief of Laziness','Captain of Coolness','Supreme Ruler of Pizza'
+    ];
+
+    const fortunes=[
+      'You will eat extra fries today 🍟','A pizza slice is in your near future 🍕','Your socks will go missing 🧦','Someone will send you a funny meme 😂','You will become 10% cooler 😎'
+    ];
+
+    function showProcessing(show){processing.style.display=show?'flex':'none'}
+    function showResult(show){result.style.display=show?'block':'none'}
+    function showJoke(text){jokeDiv.style.opacity=1;jokeDiv.textContent=text}
+    function showTitle(text){titleDiv.style.opacity=1;titleDiv.textContent=text}
+    function showFortune(text){fortuneDiv.style.opacity=1;fortuneDiv.textContent=text}
+
+    function sanitizeName(name){
+      const trimmed=name.trim();
+      return trimmed.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+    }
+
+    function typeWrite(elem,text,callback){
+      elem.textContent='';
+      let i=0;
+      const t=setInterval(()=>{
+        elem.textContent+=text.charAt(i);
+        i++;
+        if(i>=text.length){clearInterval(t);if(callback)callback();}
+      },40);
+    }
+
+    function playSound(url){
+      const audio=new Audio(url);
+      audio.play();
+    }
+
+    function speak(text){
+      if('speechSynthesis'in window){
+        const utter=new SpeechSynthesisUtterance(text);
+        speechSynthesis.speak(utter);
+      }
+    }
+
+    btn.addEventListener('click',()=>{
+      const raw=input.value;
+      const name=sanitizeName(raw||'Stranger');
+      showResult(false);showProcessing(true);jokeDiv.style.opacity=0;titleDiv.style.opacity=0;fortuneDiv.style.opacity=0;rating.style.display='none';
+      playSound('https://actions.google.com/sounds/v1/cartoon/drum_roll.ogg');
+
+      setTimeout(()=>{
+        showProcessing(false);
+        showResult(true);
+        typeWrite(theName,name,()=>{
+          const joke=jokes[Math.floor(Math.random()*jokes.length)];
+          const title=titles[Math.floor(Math.random()*titles.length)];
+          const fortune=fortunes[Math.floor(Math.random()*fortunes.length)];
+          showJoke(joke);showTitle(title);showFortune(fortune);
+          rating.style.display='block';
+          let percent=Math.floor(Math.random()*101);
+          ratingFill.style.width=percent+'%';
+          playSound('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg');
+          speak(`This is your name: ${name}`);
+        });
+      },1500);
+    });
+
+    input.addEventListener('keydown',e=>{if(e.key==='Enter')btn.click();});
+    window.addEventListener('load',()=>{input.focus();});
+  </script>
+</body>
+</html>
